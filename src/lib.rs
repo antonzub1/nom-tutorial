@@ -182,7 +182,7 @@ pub(self) mod parsers {
 	// Parse the options of a mount into a comma separated vector of strings.  The options string is terminated by a whitespace.
 	// Here we use `nom::combinator::map_parser` to extract the full whitespace-terminated options string and then pass it in to `transform_escaped` to process escaped characters.  Then the transformed string is split into a comma-delimited vector of strings by `nom::multi::separated_list`.
 	fn mount_opts(i: &str) -> nom::IResult<&str, std::vec::Vec<std::string::String>> {
-		nom::multi::separated_list(nom::character::complete::char(','), nom::combinator::map_parser(nom::bytes::complete::is_not(", \t"),transform_escaped))(i)
+		nom::multi::separated_list0(nom::character::complete::char(','), nom::combinator::map_parser(nom::bytes::complete::is_not(", \t"),transform_escaped))(i)
 	}
 	
 	// Parse a line from `/proc/mounts` into a Mount struct.  This is perhaps the most complex looking parser, but it is actually one of the simplest because we build upon each of the parsers defined above.  Let's break it down parser by parser:
