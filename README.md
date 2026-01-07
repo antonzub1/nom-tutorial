@@ -2,7 +2,7 @@
 
 [Nom](https://github.com/Geal/nom) is a wonderful parser combinators library written in Rust.  It can handle binary and text files.  Consider it where you would otherwise use a regular expression or Flex and Bison.  Nom has the advantage of Rusts's strong typing and memory safety, and it is often more performant than alternatives.  Learning nom is a worthwhile addition to your Rust toolbox.
 
-Nom has continued to evolve.  When I wrote this tutorial, nom version 5 was hot new stuff.  At my latest check nom is at version 7.1!  Unfortunately, due to time constraints, **this tutorial is not actively maintained.**  However, please feel free browse, as some of these older concepts may still be helpful for learning the latest and greatest version of nom.
+Nom has continued to evolve.  When I wrote this tutorial, nom version 5 was hot new stuff.  This tutorial has been updated for nom 8.0!  Unfortunately, due to time constraints, **this tutorial is not actively maintained.**  However, please feel free browse, as some of these older concepts may still be helpful for learning the latest and greatest version of nom.
 
 ## Rationale
 
@@ -65,7 +65,7 @@ The finished version of the tutorial is a lot to digest at once, so in the secti
 
 ```toml
 [dependencies]
-nom = "5.0"
+nom = "8.0"
 ```
 
 ## <a name="chap3"></a>Hello Parser
@@ -74,9 +74,10 @@ In your new project, edit `main.rs` to contain the following:
 
 ```rust
 extern crate nom;
+use nom::Parser;
 
 fn hello_parser(i: &str) -> nom::IResult<&str, &str> {
-	nom::bytes::complete::tag("hello")(i)
+	nom::bytes::complete::tag("hello").parse(i)
 }
 
 fn main() {
@@ -91,7 +92,7 @@ Compile and run the program:
 $ cargo run
 Ok(("", "hello"))
 Ok((" world", "hello"))
-Err(Error(("goodbye hello again", Tag)))
+Err(Error(Error { input: "goodbye hello again", code: Tag }))
 ```
 Let's break this program down line by line.
 
@@ -106,10 +107,10 @@ In the [previous section](#chap2) we added nom as a dependency in `Cargo.toml`. 
 
 ```rust
 fn hello_parser(i: &str) -> nom::IResult<&str, &str> {
-	nom::bytes::complete::tag("hello")(i)
+	nom::bytes::complete::tag("hello").parse(i)
 }
 ```
-This creates a function called `hello_parser` that takes a `&str` (borrowed string slice) as its input and returns a type `nom::IResult<&str, &str>`, which we'll talk more about later.  Within the body of the function we create a nom tag parser.  A tag parser recognizes a literal string, or "tag", of text.  The tag parser `tag("hello")` is a function object that recognizes the text "hello".  We then call the tag parser with the input string as its argument and return the result.  (Remember, in Rust you can omit the `return` keyword from the last line in a function.)
+This creates a function called `hello_parser` that takes a `&str` (borrowed string slice) as its input and returns a type `nom::IResult<&str, &str>`, which we'll talk more about later.  Within the body of the function we create a nom tag parser.  A tag parser recognizes a literal string, or "tag", of text.  The tag parser `tag("hello")` is a parser that recognizes the text "hello".  We then call the tag parser's `.parse()` method with the input string as its argument and return the result.  (Remember, in Rust you can omit the `return` keyword from the last line in a function.)  Note: In nom 8.0, parsers implement the `Parser` trait and are invoked using `.parse(input)` instead of the function call syntax `(input)` used in earlier versions.
 
 ### Invoking the Parser
 
@@ -128,21 +129,22 @@ In this case the tag consumes the whole input, so the first element of the tuple
 
 ```rust
 println!("{:?}", hello_parser("goodbye hello again"));
-// Err(Error(("goodbye hello again", Tag)))
+// Err(Error(Error { input: "goodbye hello again", code: Tag }))
 ```
-Here the tag returns an `Err` because the input string didn't start with "hello."  Note that the parser failed even though the word "hello" appears in the middle of the input -- most nom parsers (including tag) will only match the beginning of the input.  The `Error` object is a `nom::Err::Error((&str, nom::error::ErrorKind))`, which is a tuple of the remaining input (the parser failed, so all of the input remained) and an `ErrorKind` describing which parser failed.  You can read more about [advanced nom error handling on github](https://github.com/Geal/nom/blob/master/doc/error_management.md).
+Here the tag returns an `Err` because the input string didn't start with "hello."  Note that the parser failed even though the word "hello" appears in the middle of the input -- most nom parsers (including tag) will only match the beginning of the input.  The `Error` object is a `nom::Err::Error(nom::error::Error { input, code })`, which contains the remaining input (the parser failed, so all of the input remained) and an `ErrorKind` describing which parser failed.  You can read more about [advanced nom error handling on github](https://github.com/Geal/nom/blob/master/doc/error_management.md).
 
 ### Summary
 
 * Nom parsers typically take an input `&str` and return an `IResult<&str,&str>`.
 * You can compose your own parser by defining a `fn (&str) -> IResult<&str,&str>` that returns the result of some combination of nom parsers.
+* In nom 8.0, parsers implement the `Parser` trait and are invoked using `.parse(input)`.  You need to `use nom::Parser;` to bring the trait into scope.
 * When a parser successfully matches some or all of the input it returns `Ok` with a tuple of the remaining input and the consumed input.
 * When a parser fails to match any input it returns an `Err`.
 * Most nom parsers match only the beginning of the input, even if there is a pattern that could match later in the input.
 
 ## <a name="chap4"></a>Reading the Nom Documentation
 
-You will need to refer to the [documentation for nom](https://docs.rs/nom) often.  Make sure you are reading the documentation for version 5.0 or later, since a lot has changed since version 4.  Previous versions of nom were very macro centric, so you will find a lot of references to macros like `tag!()`.  Macros have been soft-deprecated in favor of functions.  Most functions have the same name as their macro counterparts but without the exclamation point, i.e. `tag()`.  You can see a [list of all nom's functions here](https://docs.rs/nom/5.0.0/nom/all.html#Functions).
+You will need to refer to the [documentation for nom](https://docs.rs/nom) often.  Make sure you are reading the documentation for version 8.0, since a lot has changed since earlier versions.  Previous versions of nom were very macro centric, so you will find a lot of references to macros like `tag!()`.  Macros have been deprecated in favor of functions.  Most functions have the same name as their macro counterparts but without the exclamation point, i.e. `tag()`.  In nom 8.0, parsers implement the `Parser` trait and are invoked using `.parse(input)`.  You can see a [list of all nom's functions here](https://docs.rs/nom/8.0.0/nom/all.html#Functions).
 
 You will find that there are `streaming` and `complete` submodules.  In advanced use, nom supports streaming, or buffered, input where the parser might encounter incomplete fragments of input.  In this tutorial we will focus on the `complete` submodule for non-streaming input.
 
@@ -150,7 +152,7 @@ You will find that there are `streaming` and `complete` submodules.  In advanced
 * `nom::bytes::complete` parsers operate on sequences of bytes.  Our friend `tag` belongs to this submodule.
 * `nom::character::complete` recognizes characters, for example `nom::character::complete::multispace1` matches 1 or more characters of whitespace.
 * `nom::combinator` allows us to build up combinations of parsers.  For example, `nom::combinator::map` passes the output of one parser into a second parser.
-* `nom::multi` parsers return collections of outputs.  For example, `nom::multi::separated_list` returns a vector of strings separated by a delimiter.
+* `nom::multi` parsers return collections of outputs.  For example, `nom::multi::separated_list0` returns a vector of strings separated by a delimiter (the `0` suffix means it matches zero or more elements; there's also `separated_list1` for one or more).
 * `nom::number::complete` parsers match numeric values.
 * `nom::sequence` parsers match finite sequences of input.  For example, `nom::sequence::tuple` takes a tuple of sub-parsers and returns a tuple of their outputs.
 
@@ -230,20 +232,21 @@ That means that each item within the line is simply a sequence of characters/byt
 ```rust
 pub(self) mod parsers {
 	use super::Mount;
+	use nom::Parser;
 
 	fn not_whitespace(i: &str) -> nom::IResult<&str, &str> {
-		nom::bytes::complete::is_not(" \t")(i)
+		nom::bytes::complete::is_not(" \t").parse(i)
 	}
-	
+
 	#[cfg(test)]
 	mod tests {
 		use super::*;
-		
+
 		#[test]
 		fn test_not_whitespace() {
 			assert_eq!(not_whitespace("abcd efg"), Ok((" efg", "abcd")));
 			assert_eq!(not_whitespace("abcd\tefg"), Ok(("\tefg", "abcd")));
-			assert_eq!(not_whitespace(" abcdefg"), Err(nom::Err::Error((" abcdefg", nom::error::ErrorKind::IsNot))));
+			assert_eq!(not_whitespace(" abcdefg"), Err(nom::Err::Error(nom::error::Error::new(" abcdefg", nom::error::ErrorKind::IsNot))));
 		}
 	}
 }
@@ -299,39 +302,40 @@ Fortunately, nom already has a built-in parser for dealing with escaped sequence
 ```rust
 pub(self) mod parsers {
 	// ...
-	
+	use nom::Parser;
+
 	fn escaped_space(i: &str) -> nom::IResult<&str, &str> {
-		nom::combinator::value(" ", nom::bytes::complete::tag("040"))(i)
+		nom::combinator::value(" ", nom::bytes::complete::tag("040")).parse(i)
 	}
-	
+
 	fn escaped_backslash(i: &str) -> nom::IResult<&str, &str> {
-		nom::combinator::recognize(nom::character::complete::char('\\'))(i)
+		nom::combinator::recognize(nom::character::complete::char('\\')).parse(i)
 	}
-	
+
 	fn transform_escaped(i: &str) -> nom::IResult<&str, std::string::String> {
-		nom::bytes::complete::escaped_transform(nom::bytes::complete::is_not("\\"), '\\', nom::branch::alt((escaped_backslash, escaped_space)))(i)	
+		nom::bytes::complete::escaped_transform(nom::bytes::complete::is_not("\\"), '\\', nom::branch::alt((escaped_backslash, escaped_space))).parse(i)
 	}
-	
+
 	#[cfg(test)]
 	mod tests {
 		// ...
-		
+
 		#[test]
 		fn test_escaped_space() {
 			assert_eq!(escaped_space("040"), Ok(("", " ")));
-			assert_eq!(escaped_space(" "), Err(nom::Err::Error((" ", nom::error::ErrorKind::Tag))));
+			assert_eq!(escaped_space(" "), Err(nom::Err::Error(nom::error::Error::new(" ", nom::error::ErrorKind::Tag))));
 		}
-		
+
 		#[test]
 		fn test_escaped_backslash() {
 			assert_eq!(escaped_backslash("\\"), Ok(("", "\\")));
-			assert_eq!(escaped_backslash("not a backslash"), Err(nom::Err::Error(("not a backslash", nom::error::ErrorKind::Char))));
+			assert_eq!(escaped_backslash("not a backslash"), Err(nom::Err::Error(nom::error::Error::new("not a backslash", nom::error::ErrorKind::Char))));
 		}
-		
+
 		#[test]
 		fn test_transform_escaped() {
 			assert_eq!(transform_escaped("abc\\040def\\\\g\\040h"), Ok(("", std::string::String::from("abc def\\g h"))));
-			assert_eq!(transform_escaped("\\bad"), Err(nom::Err::Error(("bad", nom::error::ErrorKind::Tag))));
+			assert_eq!(transform_escaped("\\bad"), Err(nom::Err::Error(nom::error::Error::new("bad", nom::error::ErrorKind::Tag))));
 		}
 	}
 }
@@ -344,8 +348,10 @@ We start by defining custom parsers `escaped_space` and `escaped_backslash` that
 The `escaped_space` parser uses `nom::combinator::value`, which returns the specified value (in this case a space) when its child parser (in this case the familiar `tag`) succeeds.  We could have written it this way:
 
 ```rust
+use nom::Parser;
+
 fn escaped_space(i: &str) -> nom::IResult<&str, &str> {
-	match nom::bytes::complete::tag("040")(i) {
+	match nom::bytes::complete::tag("040").parse(i) {
 		Ok((remaining_input, _)) => Ok((remaining_input, " ")),
 		Err(e) => Err(e)
 	}
@@ -358,7 +364,7 @@ But nom provides us with a lot of convenient parsers like `combinator::value` ou
 With our simpler sub-parsers written and tested, it is now easy to use the `escaped_transform` parser.  If we were only escaping `\040` and didn't care about `\\` then we could have written it as:
 
 ```rust
-nom::bytes::complete::escaped_transform(nom::bytes::complete::is_not("\\"), '\\', escaped_space)(i)	
+nom::bytes::complete::escaped_transform(nom::bytes::complete::is_not("\\"), '\\', escaped_space).parse(i)
 ```
 `escaped_transform` takes two parsers and a `char` as arguments:
 
@@ -388,21 +394,22 @@ We're almost there.  We have to define one more custom parser before we assemble
 ```rust
 pub(self) mod parsers {
 	// ...
-	
+	use nom::Parser;
+
 	fn mount_opts(i: &str) -> nom::IResult<&str, std::vec::Vec<std::string::String>> {
-		nom::multi::separated_list(
+		nom::multi::separated_list0(
 			nom::character::complete::char(','),
 			nom::combinator::map_parser(
 				nom::bytes::complete::is_not(", \t"),
 				transform_escaped
 			)
-		)(i)
+		).parse(i)
 	}
-	
+
 	#[cfg(test)]
 	mod tests {
 		// ...
-		
+
 		#[test]
 		fn test_mount_opts() {
 			assert_eq!(mount_opts("a,bc,d\\040e"), Ok(("", vec!["a".to_string(), "bc".to_string(), "d e".to_string()])));
@@ -410,7 +417,7 @@ pub(self) mod parsers {
 	}
 }
 ```
-As you can see from the return type of `mount_opts` we are going to generate a `Vec<String>` just like we promised.  The parser `multi::separated_list` does just that, parsing a list separated by some parser with elements that match some other parser into a vector.
+As you can see from the return type of `mount_opts` we are going to generate a `Vec<String>` just like we promised.  The parser `multi::separated_list0` does just that, parsing a list separated by some parser with elements that match some other parser into a vector (the `0` suffix means it matches zero or more elements).
 
 1. The list is separated by `character::complete::char(',')`.
 2. The elements of the list must not contain commas.  They also must not contain whitespace because the list is terminated by whitespace.
@@ -425,9 +432,10 @@ This tutorial may have felt like a lot of coding with no end in sight.  Now that
 ```rust
 pub(self) mod parsers {
 	// ...
-	
+	use nom::Parser;
+
 	pub fn parse_line(i: &str) -> nom::IResult<&str, Mount> {
-		match nom::combinator::all_consuming(nom::sequence::tuple((
+		match nom::combinator::all_consuming((
 			/* part 1 */
 			nom::combinator::map_parser(not_whitespace, transform_escaped), // device
 			nom::character::complete::space1,
@@ -441,7 +449,7 @@ pub(self) mod parsers {
 			nom::character::complete::space1,
 			nom::character::complete::char('0'),
 			nom::character::complete::space0,
-		)))(i) {
+		)).parse(i) {
 				/* part 2 */
 				Ok((remaining_input, (
 				device,
@@ -458,7 +466,7 @@ pub(self) mod parsers {
 				_, // optional whitespace
 			))) => {
 				/* part 3 */
-				Ok((remaining_input, Mount { 
+				Ok((remaining_input, Mount {
 					device: device,
 					mount_point: mount_point,
 					file_system_type: file_system_type.to_string(),
@@ -468,11 +476,11 @@ pub(self) mod parsers {
 			Err(e) => Err(e)
 		}
 	}
-	
+
 	#[cfg(test)]
 	mod tests {
 		// ...
-		
+
 		#[test]
 		fn test_parse_line() {
 			let mount1 = Mount{
@@ -487,39 +495,41 @@ pub(self) mod parsers {
 			assert_eq!(mount1.file_system_type, mount2.file_system_type);
 			assert_eq!(mount1.options, mount2.options);
 		}
-	
+
 	}
 }
 ```
 Wow, that's a lot of code!  Taking a birds-eye view, notice that `parse_line` returns a `Mount`.  Also notice that it's `pub` since this is the one parser we'll want to call from outside the `parsers` module.  Let's break up the details into 3 parts (labeled by comments in the code):
 
-1. Ignore the `all_consuming` parser for now, `sequence::tuple` matches a tuple of sub-parsers in order.  In part 1 we supply a list of child parsers (as a tuple) that we want to match.  This allows us to tell nom what a line in `/proc/mounts` should look like: first some non-whitespace, then some whitespace, then some more non-whitespace, then some more whitespace, at some point some mount options, and so forth.  Note how we slipped in some calls to `map_parser` with `transform_escaped` to deal with escaped characters.
+1. Ignore the `all_consuming` parser for now.  In nom 8.0, tuples of parsers implement the `Parser` trait directly, so you can call `.parse()` on a tuple of parsers to match them in sequence.  In part 1 we supply a list of child parsers (as a tuple) that we want to match.  This allows us to tell nom what a line in `/proc/mounts` should look like: first some non-whitespace, then some whitespace, then some more non-whitespace, then some more whitespace, at some point some mount options, and so forth.  Note how we slipped in some calls to `map_parser` with `transform_escaped` to deal with escaped characters.
 
-2. The `sequence::tuple` parser returns a tuple where each element in the tuple corresponds to each of its child parsers.  In part 2 we destructure the tuple into some descriptively names local variables.  For example, the very first non-whitespace sequence on a line is the device, so we destructure the first element in the tuple to a variable called `device`.  We ignore elements of the tuple we don't care about (like the whitespace) by using `_` as a placeholder.
+2. The tuple of parsers returns a tuple where each element corresponds to each of its child parsers.  In part 2 we destructure the tuple into some descriptively named local variables.  For example, the very first non-whitespace sequence on a line is the device, so we destructure the first element in the tuple to a variable called `device`.  We ignore elements of the tuple we don't care about (like the whitespace) by using `_` as a placeholder.
 3. We create and then return a new `Mount` object using the local variables desctructured in part 2.
 
 Finally, the `all_consuming` parser fails if there is any input left over.  This will cause `parse_line` to (conservatively) return an error if there is something at the end of the line we were not expecting.
 
 ### Alternative Final Parser
 
-I've received what I think is valid feedback that the final parser above is too complicated to look at.  What follows is an alternative version of the final parser that accomplishes the same objective with fewer, possibly more readable (depending on your sensibilities) lines of code.  It makes heavy use of the `?` operator to break the `tuple` parser into individual statements.  The `?` operator ends the function early, returning an error, if a parser fails.  The remaining input from each parser is used as the input of the next parser.  Pertinent variables are stored and later used to construct the `Mount` object at the end of the function.  Superfluous variables are discarded by assigning to `_`.
+I've received what I think is valid feedback that the final parser above is too complicated to look at.  What follows is an alternative version of the final parser that accomplishes the same objective with fewer, possibly more readable (depending on your sensibilities) lines of code.  It makes heavy use of the `?` operator to break the tuple of parsers into individual statements.  The `?` operator ends the function early, returning an error, if a parser fails.  The remaining input from each parser is used as the input of the next parser.  Pertinent variables are stored and later used to construct the `Mount` object at the end of the function.  Superfluous variables are discarded by assigning to `_`.
 
 ```rust
+use nom::Parser;
+
 pub fn parse_line_alternate(i: &str) -> nom::IResult<&str, Mount> {
-	let (i, device) = nom::combinator::map_parser(not_whitespace, transform_escaped)(i)?; // device
-	let (i, _) = nom::character::complete::space1(i)?;
-	let (i, mount_point) = nom::combinator::map_parser(not_whitespace, transform_escaped)(i)?; // mount_point
-	let (i, _) = nom::character::complete::space1(i)?;
+	let (i, device) = nom::combinator::map_parser(not_whitespace, transform_escaped).parse(i)?; // device
+	let (i, _) = nom::character::complete::space1.parse(i)?;
+	let (i, mount_point) = nom::combinator::map_parser(not_whitespace, transform_escaped).parse(i)?; // mount_point
+	let (i, _) = nom::character::complete::space1.parse(i)?;
 	let (i, file_system_type) = not_whitespace(i)?; // file_system_type
-	let (i, _) = nom::character::complete::space1(i)?;
+	let (i, _) = nom::character::complete::space1.parse(i)?;
 	let (i, options) = mount_opts(i)?; // options
-	let (i, _) = nom::combinator::all_consuming(nom::sequence::tuple((
+	let (i, _) = nom::combinator::all_consuming((
 		nom::character::complete::space1,
 		nom::character::complete::char('0'),
 		nom::character::complete::space1,
 		nom::character::complete::char('0'),
 		nom::character::complete::space0
-	)))(i)?;
+	)).parse(i)?;
 	Ok((i, Mount {
 		device: device,
 		mount_point: mount_point,
